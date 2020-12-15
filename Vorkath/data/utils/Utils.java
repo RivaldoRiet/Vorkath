@@ -1,4 +1,4 @@
-package Vorkath;
+package Vorkath.data.utils;
 
 import java.awt.Image;
 import java.io.IOException;
@@ -9,10 +9,13 @@ import java.util.stream.Stream;
 
 import javax.imageio.ImageIO;
 
+import Vorkath.data.Variables;
 import simple.hooks.filters.SimpleEquipment.EquipmentSlot;
+import simple.hooks.filters.SimplePrayers.Prayers;
 import simple.hooks.filters.SimpleSkills.Skills;
 import simple.hooks.simplebot.Game.Tab;
 import simple.hooks.wrappers.SimpleItem;
+import simple.hooks.wrappers.SimpleWidget;
 import simple.robot.api.ClientContext;
 
 public class Utils {
@@ -25,7 +28,7 @@ public class Utils {
 				size--;
 		return (size >= 3)
 				? (String.valueOf(Math.round(number.intValue() / Math.pow(10.0D, size) * 10.0D) / 10.0D)
-						+ suffix[size / 3 - 1])
+				+ suffix[size / 3 - 1])
 				: (new StringBuilder(String.valueOf(number.intValue()))).toString();
 	}
 
@@ -37,6 +40,33 @@ public class Utils {
 		}
 	}
 
+
+	public static boolean isProjectileActive(int id) {
+		if (ClientContext.instance().projectiles.getActiveProjectiles().size() > 0) {
+			if (ClientContext.instance().projectiles.projectileActive(id)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+
+	public static void disablePrayer(Prayers prayer) {
+		if (ClientContext.instance().prayers.prayerActive(prayer))
+			ClientContext.instance().prayers.prayer(prayer, false);
+	}
+
+
+
+	public static void disableAllPrayers() {
+		Stream.of(Prayers.values()).forEach(Utils::disablePrayer);
+	}
+
+	public static void enablePrayer(Prayers prayer) {
+		if (!ClientContext.instance().prayers.prayerActive(prayer))
+			ClientContext.instance().prayers.prayer(prayer, true);
+	}
+
 	public static String get(String url) throws Exception {
 		StringBuilder sb = new StringBuilder();
 		for (Scanner sc = new Scanner(new URL(url).openStream()); sc.hasNext();)
@@ -45,6 +75,7 @@ public class Utils {
 	}
 
 	public static boolean inventoryContains(boolean all, String... itemName) {
+		if (!all) return inventoryContains(itemName);
 		return !ClientContext.instance().inventory.populate()
 				.filter(p -> Stream.of(itemName).allMatch(arr -> p.getName().toLowerCase().contains(arr.toLowerCase())))
 				.isEmpty();
@@ -65,7 +96,7 @@ public class Utils {
 	public static boolean isItemEquiped(String name) {
 		if (ClientContext.instance().equipment.getEquippedItem(EquipmentSlot.WEAPON) != null
 				&& ClientContext.instance().equipment.getEquippedItem(EquipmentSlot.WEAPON).getName().toLowerCase()
-						.contains(name)) {
+				.contains(name)) {
 			return true;
 		}
 
@@ -109,6 +140,31 @@ public class Utils {
 			return "";
 		return String.format("%d min, %d sec", TimeUnit.MILLISECONDS.toSeconds(left) / 60,
 				TimeUnit.MILLISECONDS.toSeconds(left) % 60);
+	}
+
+	public static void drinkSinglePrayerPot(boolean check) {
+		int percPrayerlvl = getPercentagePrayer();
+		if (check && percPrayerlvl > 60)
+			return;
+
+		String[] restores = { "restore", "sanfew", "prayer" };
+		SimpleItem restore = getItem(restores);
+
+		if (restore != null && restore.click(0)) {
+			Variables.STATUS = "Drinking prayer potion";
+		}
+	}
+
+	public static void setZoom() {
+		ClientContext ctx = ClientContext.instance();
+		ctx.viewport.pitch(100);
+		ctx.viewport.angle(0);
+
+		openTab(Tab.OPTIONS);
+
+		SimpleWidget widget = ctx.widgets.getWidget(261, 10);
+		if (widget != null && widget.visibleOnScreen())
+			widget.click(0);
 	}
 
 }
